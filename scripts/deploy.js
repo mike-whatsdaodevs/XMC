@@ -28,12 +28,12 @@ async function main() {
   let lib_address = process.env.LIB_TEST;
 
   
-  // const Lib = await hre.ethers.getContractFactory('IterableMapping')
-  // let lib = await Lib.deploy()
-  // await lib.deployed()
-  // console.log("lib is", lib.address);
+  const Lib = await hre.ethers.getContractFactory('IterableMapping')
+  let lib = await Lib.deploy()
+  await lib.deployed()
+  console.log("lib is", lib.address);
 
-  // let lib_address = lib.address;
+  lib_address = lib.address;
 
 
   const XMCLPStake = await hre.ethers.getContractFactory(

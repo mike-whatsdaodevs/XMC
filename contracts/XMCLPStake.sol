@@ -135,11 +135,11 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         return lpPool.totalDividendsDistributed();
     }
 
-    function withdrawableDividendOf(address account) public view returns(uint256) {
+    function withdrawableBonusOf(address account) public view returns(uint256) {
     	return lpPool.withdrawableDividendOf(account);
   	}
 
-    function withdrawableTeamDividendOf(address account) public view returns(uint256) {
+    function withdrawableTeamBonusOf(address account) public view returns(uint256) {
         return teamPool.withdrawableDividendOf(account);
     }
 
@@ -174,10 +174,12 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
     }
 
     function claim() external whenNotPaused {
+        shareFees();
 		lpPool.processAccount(msg.sender, false);
     }
 
     function teamClaim() external whenNotPaused {
+        shareFees();
         teamPool.processAccount(msg.sender, false);
     }
 
