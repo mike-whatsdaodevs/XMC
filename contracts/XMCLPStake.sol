@@ -7,12 +7,13 @@ import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "./IUniswapV2Router02.sol";
 import "./IUniswapV2Factory.sol";
-import "./DividendTracker.sol";
+import "./Pool.sol";
 
 
 contract XMCLPStake is Ownable {
 
-    DividendTracker public dividendTracker;
+    Pool public lpPool;
+    Pool public teamPool;
     using SafeMath for uint256;
 
     IERC20 public rewardToken; //XMC
@@ -26,7 +27,7 @@ contract XMCLPStake is Ownable {
     mapping(address => uint256) public stakeInfo;
 
 
-    event UpdateDividendTracker(address indexed newAddress, address indexed oldAddress);
+    event UpdatePool(address indexed newAddress, address indexed oldAddress);
 
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
@@ -35,7 +36,7 @@ contract XMCLPStake is Ownable {
     	uint256 amount
     );
 
-    event ProcessedDividendTracker(
+    event ProcessedPool(
     	uint256 iterations,
     	uint256 claims,
         uint256 lastProcessedIndex,
@@ -45,26 +46,32 @@ contract XMCLPStake is Ownable {
     );
 
     constructor() {
-    	dividendTracker = new DividendTracker(address(rewardToken));
+    	lpPool = new Pool(address(rewardToken));
+        
     }
 
     receive() external payable {}
 
-    function updateDividendTracker(address newAddress) public onlyOwner {
-        require(newAddress != address(dividendTracker), "BabyDogePaid: The dividend tracker already has that address");
+    function updatePool(address newAddress) public onlyOwner {
+        require(newAddress != address(lpPool), "BabyDogePaid: The dividend tracker already has that address");
 
-        DividendTracker newDividendTracker = DividendTracker(newAddress);
+        Pool newPool = Pool(newAddress);
 
-        require(newDividendTracker.owner() == address(this), "BabyDogePaid: The new dividend tracker must be owned by the BabyDogePaid token contract");
+        require(newPool.owner() == address(this), "BabyDogePaid: The new dividend tracker must be owned by the BabyDogePaid token contract");
 
-        emit UpdateDividendTracker(newAddress, address(dividendTracker));
+        emit UpdatePool(newAddress, address(lpPool));
 
-        dividendTracker = newDividendTracker;
+        lpPool = newPool;
     }
 
     function setLPAddress(address _lp) external onlyOwner {
         require(_lp != address(0), "E: lp address cant be zero");
         LP = IERC20(_lp);
+    }
+
+    function setRewardToken(address _token) external onlyOwner {
+        require(_token != address(0), "E: lp address cant be zero");
+        rewardToken = IERC20(_token);
     }
 
     function setMarketingWallet(address payable wallet) external onlyOwner{
@@ -80,27 +87,27 @@ contract XMCLPStake is Ownable {
     }
 
     function updateClaimWait(uint256 claimWait) external onlyOwner {
-        dividendTracker.updateClaimWait(claimWait);
+        lpPool.updateClaimWait(claimWait);
     }
 
     function getClaimWait() external view returns(uint256) {
-        return dividendTracker.claimWait();
+        return lpPool.claimWait();
     }
 
     function getTotalDividendsDistributed() external view returns (uint256) {
-        return dividendTracker.totalDividendsDistributed();
+        return lpPool.totalDividendsDistributed();
     }
 
     function withdrawableDividendOf(address account) public view returns(uint256) {
-    	return dividendTracker.withdrawableDividendOf(account);
+    	return lpPool.withdrawableDividendOf(account);
   	}
 
 	function dividendTokenBalanceOf(address account) public view returns (uint256) {
-		return dividendTracker.balanceOf(account);
+		return lpPool.balanceOf(account);
 	}
 
 	function excludeFromDividends(address account) external onlyOwner{
-	    dividendTracker.excludeFromDividends(account);
+	    lpPool.excludeFromDividends(account);
 	}
 
     function getAccountDividendsInfo(address account)
@@ -113,7 +120,7 @@ contract XMCLPStake is Ownable {
             uint256,
             uint256,
             uint256) {
-        return dividendTracker.getAccount(account);
+        return lpPool.getAccount(account);
     }
 
 	function getAccountDividendsInfoAtIndex(uint256 index)
@@ -126,11 +133,11 @@ contract XMCLPStake is Ownable {
             uint256,
             uint256,
             uint256) {
-    	return dividendTracker.getAccountAtIndex(index);
+    	return lpPool.getAccountAtIndex(index);
     }
 
     function claim() external {
-		dividendTracker.processAccount(msg.sender, false);
+		lpPool.processAccount(msg.sender, false);
     }
 
     function shareFees() public {
@@ -146,7 +153,7 @@ contract XMCLPStake is Ownable {
 
         uint256 liquidityFeeAmount = liquidityFee.mul(amount).div(totalFee);
         if(liquidityFeeAmount > 0) {
-            rewardToken.transfer(address(dividendTracker), teamFeeAmount);
+            rewardToken.transfer(address(lpPool), teamFeeAmount);
         }
 
         uint256 marketingFee = amount.sub(teamFeeAmount).sub(liquidityFeeAmount);
@@ -165,38 +172,36 @@ contract XMCLPStake is Ownable {
         require(lpBalance >= amount, "E: usdt-xmc lp balance not enough");
 
         LP.transferFrom(msg.sender, address(this), amount);
+        lpPool.safeMint(msg.sender, amount);
 
         shareFees();
-
-        dividendTracker.safeMint(msg.sender, amount);
-
-        uint256 dividends = IERC20(rewardToken).balanceOf(address(dividendTracker));
-        dividendTracker.distributeDividends(dividends);
+        uint256 dividends = IERC20(rewardToken).balanceOf(address(lpPool));
+        lpPool.distributeDividends(dividends);
 
         stakeInfo[msg.sender] = stakeInfo[msg.sender].add(amount);
     }
 
+    /// @dev withdraw lp from contract, need approve first
     function withdrawLP() external {
-        uint256 amount = dividendTracker.balanceOf(msg.sender);
+        uint256 amount = lpPool.balanceOf(msg.sender);
         require(stakeInfo[msg.sender] == amount, "E: amount error");
 
-        dividendTracker.transferFrom(msg.sender, address(this), amount);
+        lpPool.transferFrom(msg.sender, address(this), amount);
+        lpPool.safeBurn(address(this), amount);
+        LP.transfer(msg.sender, amount);
 
         shareFees();
-
-        dividendTracker.safeBurn(address(this), amount);
-
-        uint256 dividends = IERC20(rewardToken).balanceOf(address(dividendTracker));
-        dividendTracker.distributeDividends(dividends);
+        uint256 dividends = IERC20(rewardToken).balanceOf(address(lpPool));
+        lpPool.distributeDividends(dividends);
 
         stakeInfo[msg.sender] = 0;
 
-        dividendTracker.processAccount(msg.sender, false);
+        lpPool.processAccount(msg.sender, false);
     }
 
 
     function getNumberOfDividendTokenHolders() external view returns(uint256) {
-        return dividendTracker.getNumberOfTokenHolders();
+        return lpPool.getNumberOfTokenHolders();
     }
 
 

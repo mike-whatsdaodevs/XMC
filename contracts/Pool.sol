@@ -5,7 +5,7 @@ pragma solidity ^0.8.3;
 import "./DividendPayingToken.sol";
 import "./IterableMapping.sol";
 
-contract DividendTracker is Ownable, DividendPayingToken {
+contract Pool is Ownable, DividendPayingToken {
     using SafeMath for uint256;
     using SafeMathInt for int256;
     using IterableMapping for IterableMapping.Map;
