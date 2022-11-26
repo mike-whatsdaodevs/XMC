@@ -22,7 +22,7 @@ async function main() {
   let approve_tx = await lp.approve(proxy_address, ethers.constants.MaxUint256);
   await approve_tx.wait();
 
-  let amount = ethers.utils.parseEther("200");
+  let amount = ethers.utils.parseEther("100");
   let deposit_tx = await staking.depositLP(amount);
   await deposit_tx.wait();
 

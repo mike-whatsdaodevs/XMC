@@ -32,6 +32,11 @@ async function main() {
 
   // console.log("tx hash is", deposit_tx.hash);
 
+
+  // let lpWithdrawableDividend = await pool.withdrawableDividendOf(my_address);
+  // console.log("lpWithdrawableDividend is", lpWithdrawableDividend);
+  // return;
+
   // let lp_pool = await staking.lpPool();
 
   // console.log(lp_pool);
@@ -42,17 +47,27 @@ async function main() {
   // return;
   // let rewardToken = await team.rewardToken();
   // console.log("rewardToken is", rewardToken);
+
+  // let totalSupply = await team.totalSupply();
+  // console.log("totalSupply is", totalSupply);
+
+  // let teamWithdrawableDividend = await team.withdrawableDividendOf(my_address);
+  // console.log("teamWithdrawableDividend is", teamWithdrawableDividend);
+
+  
   // return;
 
   // let pool_info = await pool.getAccount(my_address);
   // console.log(pool_info);
 
+  // return;
   // let withdrawableDividendOf = await pool.withdrawableDividendOf(my_address);
   // console.log(withdrawableDividendOf);
 
   // let balance = await xmc.balanceOf(pool_address);
   // console.log("balance is",balance);
   // return;
+
 
   // let withdrawDividend_tx = await pool.withdrawDividend();
   // await withdrawDividend_tx.wait();
@@ -66,14 +81,17 @@ async function main() {
   // let info = await staking.withdrawableDividendOf(my_address);
   // console.log(ethers.utils.formatEther(info));
 
-  let claim_tx = await staking.withdrawLP();
-  await claim_tx.wait();
-  console.log(claim_tx.hash);
+  // return;
 
-  return;
- // await withdraw_tx.wait();
+  // let claim_tx = await staking.teamClaim();
+  // await claim_tx.wait();
+  // console.log(claim_tx.hash);
 
- // console.log("withdraw_tx hash is", withdraw_tx.hash);
+
+  let withdraw_tx = await staking.withdrawLP();
+  await withdraw_tx.wait();
+
+  console.log("withdraw_tx hash is", withdraw_tx.hash);
 
  
 

@@ -181,23 +181,29 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         teamPool.processAccount(msg.sender, false);
     }
 
-    function shareFees() public returns (uint256 teamFeeAmount, uint256 liquidityFeeAmount, uint256 marketingFeeAmount) {
+    function shareFees() public {
         uint256 amount = rewardToken.balanceOf(address(this));
-        if(amount == 0) return(0, 0, 0);
+        if(amount == 0) return;
 
         uint256 totalFee = totalFee();
 
-        teamFeeAmount = teamFee.mul(amount).div(totalFee);
+        if(lpPool.totalSupply() == 0 || teamPool.totalSupply() == 0) {
+            return;
+        }
+
+        uint256 teamFeeAmount = teamFee.mul(amount).div(totalFee);
         if(teamFeeAmount > 0) {
             rewardToken.transfer(address(teamPool), teamFeeAmount);
+            teamPool.distributeDividends(teamFeeAmount);
         }
 
-        liquidityFeeAmount = liquidityFee.mul(amount).div(totalFee);
+        uint256 liquidityFeeAmount = liquidityFee.mul(amount).div(totalFee);
         if(liquidityFeeAmount > 0) {
             rewardToken.transfer(address(lpPool), liquidityFeeAmount);
+            lpPool.distributeDividends(liquidityFeeAmount);
         }
 
-        marketingFeeAmount = amount.sub(teamFeeAmount).sub(liquidityFeeAmount);
+        uint256 marketingFeeAmount = amount.sub(teamFeeAmount).sub(liquidityFeeAmount);
         if(marketingFeeAmount > 0) {
             rewardToken.transfer(marketingWallet, marketingFeeAmount);
         }
@@ -213,19 +219,15 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         require(lpBalance >= amount, "E: usdt-xmc lp balance not enough");
 
         uint256 depositedAmount = getLPPoolBalance(msg.sender);
-
         // first
+        shareFees();
+        // second
         LP.transferFrom(msg.sender, address(this), amount);
         lpPool.setBalance(msg.sender, depositedAmount.add(amount));
-
-        // second
-        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
-        lpPool.distributeDividends(liquidityFeeAmount);
-
-        teamPoolMint(msg.sender, amount, teamFeeAmount);
+        teamPoolMint(msg.sender, amount);
     }
 
-    function teamPoolMint(address account, uint256 amount, uint256 teamFeeAmount) internal {
+    function teamPoolMint(address account, uint256 amount) internal {
         address leader = teamMap[account];
         if(leader == address(0)) {
             leader = rootLeader;
@@ -236,11 +238,9 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         // first
         teamPool.setBalance(leader, depositedAmount.add(amount));
 
-        // second
-        teamPool.distributeDividends(teamFeeAmount);
     }
 
-    function teamPoolBurn(address account, uint256 amount, uint256 teamFeeAmount) internal {
+    function teamPoolBurn(address account, uint256 amount) internal {
         address leader = teamMap[account];
         if(leader == address(0)) {
             leader = rootLeader;
@@ -248,10 +248,6 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         }
 
         uint256 depositedAmount = getTeamPoolBalance(leader);
-
-        // first
-        teamPool.distributeDividends(teamFeeAmount);
-        // second
         teamPool.setBalance(leader, depositedAmount.sub(amount));
     }
 
@@ -261,16 +257,14 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         require(depositedAmount > 0, "E: amount error");
 
         // first
-        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
-        lpPool.distributeDividends(liquidityFeeAmount);
+        shareFees();
 
         // second
         lpPool.setBalance(msg.sender, 0);
         LP.transfer(msg.sender, depositedAmount);
+        teamPoolBurn(msg.sender, depositedAmount);
 
         lpPool.processAccount(msg.sender, false);
-
-        teamPoolBurn(msg.sender, depositedAmount, teamFeeAmount);
     }
 
     /// @dev return account lp pool balance
@@ -308,11 +302,7 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         }
         address oldLeader = teamMap[member];
 
-        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
-
-        lpPool.distributeDividends(liquidityFeeAmount);
-        // first
-        teamPool.distributeDividends(teamFeeAmount);
+        shareFees();
 
         uint256 oldLeaderDTeamepisited = getTeamPoolBalance(oldLeader);
         uint256 newLeaderDTeamepisited = getTeamPoolBalance(newLeader);
