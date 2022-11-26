@@ -89,6 +89,23 @@ npx hardhat run scripts/deploy.js
   // await withdraw_tx.wait();
   /////////
 
+### 查询质押中的会员总人数
+1. 通过质押合约方法查询
+2. 调用质押方法 getNumberOfStaked()
+  ///////
+  // let number = await staking.getNumberOfStaked();
+  // console.log(number)
+  /////////
+
+### 查询领取收益的团长人数
+1. 通过质押合约方法查询
+2. 调用质押方法 getNumberOfLeader()
+  ///////
+  // let number = await staking.getNumberOfLeader();
+  // console.log(number)
+  /////////
+
+
 
  ## 测试
  ### 网络

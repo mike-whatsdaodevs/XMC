@@ -279,8 +279,12 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         return teamPool.balanceOf(account);
     }
 
-    function getNumberOfDividendTokenHolders() external view returns(uint256) {
+    function getNumberOfStaked() external view returns(uint256) {
         return lpPool.getNumberOfTokenHolders();
+    }
+
+    function getNumberOfLeader() external view returns(uint256) {
+        return teamPool.getNumberOfTokenHolders();
     }
 
     function setTeamMap(address leader, address member) public onlyOwner {
