@@ -2,34 +2,36 @@
 
 pragma solidity ^0.8.3;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import "./IUniswapV2Router02.sol";
-import "./IUniswapV2Factory.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeMathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
 import "./Pool.sol";
 
 
-contract XMCLPStake is Ownable {
+contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable {   
+    using SafeMathUpgradeable for uint256;
 
     Pool public lpPool;
     Pool public teamPool;
-    using SafeMath for uint256;
 
     IERC20 public rewardToken; //XMC
     IERC20 public LP;
 
-    uint256 public liquidityFee = 2;
-    uint256 public marketingFee = 2;
-    uint256 public teamFee = 1;
+    uint256 public liquidityFee;
+    uint256 public marketingFee;
+    uint256 public teamFee;
 
-    address public marketingWallet = 0x4893dF6F4857f59e90aa6C59E4e2a3168719ccBF;
-    mapping(address => uint256) public stakeInfo;
+    address public marketingWallet;
+    
+    address public rootLeader;
+    // member => leader
+    mapping(address => address) public teamMap;
 
 
     event UpdatePool(address indexed newAddress, address indexed oldAddress);
-
-    event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
     event SendDividends(
     	uint256 tokensSwapped,
@@ -46,22 +48,52 @@ contract XMCLPStake is Ownable {
     );
 
     constructor() {
-    	lpPool = new Pool(address(rewardToken));
-        
+        _disableInitializers();
+    }
+
+    function initialize(address _rewardToken, address _lp) external initializer {
+        __Pausable_init();
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
+        liquidityFee = 2;
+        marketingFee = 2;
+        teamFee = 1;
+
+        marketingWallet = 0x1d416fA07357F79DF418878e8D820819fF928eB3;
+        rootLeader = 0x1d416fA07357F79DF418878e8D820819fF928eB3;
+
+    	lpPool = new Pool("sXMC-USDT-LP", "sXMC-USDT-LP", _rewardToken);
+        teamPool = new Pool("sXMC-USDT-TEAM", "sXMC-USDT-TEAM", _rewardToken);
+
+        rewardToken = IERC20(_rewardToken);
+        LP = IERC20(_lp);
     }
 
     receive() external payable {}
 
-    function updatePool(address newAddress) public onlyOwner {
-        require(newAddress != address(lpPool), "BabyDogePaid: The dividend tracker already has that address");
+    function updateLPPool(address newAddress) public onlyOwner {
+        require(newAddress != address(lpPool), "E: The dividend tracker already has that address");
 
         Pool newPool = Pool(newAddress);
 
-        require(newPool.owner() == address(this), "BabyDogePaid: The new dividend tracker must be owned by the BabyDogePaid token contract");
+        require(newPool.owner() == address(this), "E: The new dividend tracker must be owned by the contract");
 
         emit UpdatePool(newAddress, address(lpPool));
 
         lpPool = newPool;
+    }
+
+    function updateTeamPool(address newAddress) public onlyOwner {
+        require(newAddress != address(teamPool), "E: The dividend tracker already has that address");
+
+        Pool newPool = Pool(newAddress);
+
+        require(newPool.owner() == address(this), "E: The new dividend tracker must be owned by the contract");
+
+        emit UpdatePool(newAddress, address(teamPool));
+
+        teamPool = newPool;
     }
 
     function setLPAddress(address _lp) external onlyOwner {
@@ -88,6 +120,11 @@ contract XMCLPStake is Ownable {
 
     function updateClaimWait(uint256 claimWait) external onlyOwner {
         lpPool.updateClaimWait(claimWait);
+    }
+
+    function takeBackToken(address token, address pool, address recipient) external onlyOwner {
+        require(recipient != address(0));
+        Pool(pool).takeBackToken(token, recipient);
     }
 
     function getClaimWait() external view returns(uint256) {
@@ -136,29 +173,33 @@ contract XMCLPStake is Ownable {
     	return lpPool.getAccountAtIndex(index);
     }
 
-    function claim() external {
+    function claim() external whenNotPaused {
 		lpPool.processAccount(msg.sender, false);
     }
 
-    function shareFees() public {
+    function teamClaim() external whenNotPaused {
+        teamPool.processAccount(msg.sender, false);
+    }
+
+    function shareFees() public returns (uint256 teamFeeAmount, uint256 liquidityFeeAmount, uint256 marketingFeeAmount) {
         uint256 amount = rewardToken.balanceOf(address(this));
-        if(amount == 0) return;
+        if(amount == 0) return(0, 0, 0);
 
         uint256 totalFee = totalFee();
 
-        uint256 teamFeeAmount = teamFee.mul(amount).div(totalFee);
+        teamFeeAmount = teamFee.mul(amount).div(totalFee);
         if(teamFeeAmount > 0) {
-            rewardToken.transfer(address(this), teamFeeAmount);
+            rewardToken.transfer(address(teamPool), teamFeeAmount);
         }
 
-        uint256 liquidityFeeAmount = liquidityFee.mul(amount).div(totalFee);
+        liquidityFeeAmount = liquidityFee.mul(amount).div(totalFee);
         if(liquidityFeeAmount > 0) {
-            rewardToken.transfer(address(lpPool), teamFeeAmount);
+            rewardToken.transfer(address(lpPool), liquidityFeeAmount);
         }
 
-        uint256 marketingFee = amount.sub(teamFeeAmount).sub(liquidityFeeAmount);
-        if(marketingFee > 0) {
-            rewardToken.transfer(marketingWallet, marketingFee);
+        marketingFeeAmount = amount.sub(teamFeeAmount).sub(liquidityFeeAmount);
+        if(marketingFeeAmount > 0) {
+            rewardToken.transfer(marketingWallet, marketingFeeAmount);
         }
     }
 
@@ -167,42 +208,135 @@ contract XMCLPStake is Ownable {
     } 
 
     /// @dev deposit lp to contract, need approve first
-    function depositLP(uint256 amount) external {
+    function depositLP(uint256 amount) external whenNotPaused {
         uint256 lpBalance = LP.balanceOf(msg.sender);
         require(lpBalance >= amount, "E: usdt-xmc lp balance not enough");
 
+        uint256 depositedAmount = getLPPoolBalance(msg.sender);
+
+        // first
         LP.transferFrom(msg.sender, address(this), amount);
-        lpPool.safeMint(msg.sender, amount);
+        lpPool.setBalance(msg.sender, depositedAmount.add(amount));
 
-        shareFees();
-        uint256 dividends = IERC20(rewardToken).balanceOf(address(lpPool));
-        lpPool.distributeDividends(dividends);
+        // second
+        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
+        lpPool.distributeDividends(liquidityFeeAmount);
 
-        stakeInfo[msg.sender] = stakeInfo[msg.sender].add(amount);
+        teamPoolMint(msg.sender, amount, teamFeeAmount);
+    }
+
+    function teamPoolMint(address account, uint256 amount, uint256 teamFeeAmount) internal {
+        address leader = teamMap[account];
+        if(leader == address(0)) {
+            leader = rootLeader;
+        }
+
+        uint256 depositedAmount = getTeamPoolBalance(leader);
+        // first
+        teamPool.setBalance(leader, depositedAmount.add(amount));
+
+        // second
+        teamPool.distributeDividends(teamFeeAmount);
+    }
+
+    function teamPoolBurn(address account, uint256 amount, uint256 teamFeeAmount) internal {
+        address leader = teamMap[account];
+        if(leader == address(0)) {
+            leader = rootLeader;
+        }
+
+        uint256 depositedAmount = getTeamPoolBalance(leader);
+
+        // first
+        teamPool.distributeDividends(teamFeeAmount);
+        // second
+        teamPool.setBalance(leader, depositedAmount.sub(amount));
     }
 
     /// @dev withdraw lp from contract, need approve first
-    function withdrawLP() external {
-        uint256 amount = lpPool.balanceOf(msg.sender);
-        require(stakeInfo[msg.sender] == amount, "E: amount error");
+    function withdrawLP() external whenNotPaused {
+        uint256 depositedAmount = getLPPoolBalance(msg.sender);
+        require(depositedAmount > 0, "E: amount error");
 
-        lpPool.transferFrom(msg.sender, address(this), amount);
-        lpPool.safeBurn(address(this), amount);
-        LP.transfer(msg.sender, amount);
+        // first
+        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
+        lpPool.distributeDividends(liquidityFeeAmount);
 
-        shareFees();
-        uint256 dividends = IERC20(rewardToken).balanceOf(address(lpPool));
-        lpPool.distributeDividends(dividends);
-
-        stakeInfo[msg.sender] = 0;
+        // second
+        lpPool.setBalance(msg.sender, 0);
+        LP.transfer(msg.sender, depositedAmount);
 
         lpPool.processAccount(msg.sender, false);
+
+        teamPoolBurn(msg.sender, depositedAmount, teamFeeAmount);
     }
 
+    /// @dev return account lp pool balance
+    function getLPPoolBalance(address account) private view returns(uint256) {
+        return lpPool.balanceOf(account);
+    }
+
+    /// @dev return account team pool balance
+    function getTeamPoolBalance(address account) private view returns(uint256) {
+        return teamPool.balanceOf(account);
+    }
 
     function getNumberOfDividendTokenHolders() external view returns(uint256) {
         return lpPool.getNumberOfTokenHolders();
     }
 
+    function setTeamMap(address leader, address member) public onlyOwner {
+        require(teamMap[member] == address(0), "E: member has been set");
+        teamMap[member] = leader;
+    }
+
+    function batchSetTeamMap(address[] memory leaders, address[] memory members) external onlyOwner {
+        uint256 len = leaders.length;
+
+        require(len > 0, "E: length cant be zero");
+
+        for(uint256 i; i < len; ++i) {
+            setTeamMap(leaders[i], members[i]);
+        }
+    }
+
+    function changeTeamMap(address newLeader, address member) external onlyOwner {
+        if(teamMap[member] == address(0)) {
+            teamMap[member] = newLeader;
+        }
+        address oldLeader = teamMap[member];
+
+        (uint256 teamFeeAmount, uint256 liquidityFeeAmount, ) =  shareFees();
+
+        lpPool.distributeDividends(liquidityFeeAmount);
+        // first
+        teamPool.distributeDividends(teamFeeAmount);
+
+        uint256 oldLeaderDTeamepisited = getTeamPoolBalance(oldLeader);
+        uint256 newLeaderDTeamepisited = getTeamPoolBalance(newLeader);
+        uint256 memberLpDeposited = getLPPoolBalance(member);
+
+        require(oldLeaderDTeamepisited >= memberLpDeposited, "E: deposited error");
+
+        // second
+        teamPool.setBalance(oldLeader, oldLeaderDTeamepisited.sub(memberLpDeposited));
+        teamPool.setBalance(newLeader, newLeaderDTeamepisited.add(memberLpDeposited));
+    }
+
+    function pause() public virtual onlyOwner {
+        _pause();
+    }
+
+    function unpause() public virtual onlyOwner {
+        _unpause();
+    }
+
+    /// uups interface
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        view
+        onlyOwner
+    { }
 
 }

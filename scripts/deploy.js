@@ -1,26 +1,77 @@
 // We require the Hardhat Runtime Environment explicitly here. This is optional
 // but useful for running the script in a standalone fashion through `node <script>`.
 //
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
+// When running the script with `npx hardhat run <script>` you'll find the Hardhat
+// Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  // Hardhat always runs the compile task when running scripts with its command
+  // line interface.
+  //
+  // If this script is run directly using `node` you may want to call compile
+  // manually to make sure everything is compiled
+  // await hre.run('compile');
 
-  const lockedAmount = hre.ethers.utils.parseEther("1");
+  // We get the contract to deploy
 
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+  await hre.run('compile');
 
-  await lock.deployed();
+  let provider = ethers.provider;
+  let signer = provider.getSigner();
 
-  console.log(
-    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+  let my_address = await signer.getAddress();
+  console.log(my_address);
+
+  let lp_test = process.env.LP_TEST;
+  let xmc_test = process.env.XMC_TEST;
+  let lib_address = process.env.LIB_TEST;
+
+  
+  // const Lib = await hre.ethers.getContractFactory('IterableMapping')
+  // let lib = await Lib.deploy()
+  // await lib.deployed()
+  // console.log("lib is", lib.address);
+
+  // let lib_address = lib.address;
+
+
+  const XMCLPStake = await hre.ethers.getContractFactory(
+    'XMCLPStake', {
+      libraries: {
+        IterableMapping: lib_address,
+      }
+    }
+  )
+  const staking = await XMCLPStake.deploy()
+  await staking.deployed()
+
+
+  let implement = staking.address;
+  console.log("staking implement address is:", implement)
+
+  const StakeObj = await hre.ethers.getContractAt('XMCLPStake', implement, signer)
+  const initialize_data = await StakeObj.populateTransaction.initialize(
+    xmc_test,
+    lp_test
+  )
+  console.log("initialize data is",initialize_data)
+
+  const XMCProxy = await hre.ethers.getContractFactory('XMCProxy')
+  let proxy = await XMCProxy.deploy(implement, initialize_data.data)
+  await proxy.deployed()
+  console.log("proxy is", proxy.address);
+
+  // await hre.run("verify:verify", {
+  //   address: proxy.address,
+  //   contract: "contracts/BTCZProxy.sol:BTCZProxy",
+  //   constructorArguments: [
+  //       zstaking_address,
+  //       hre.ethers.utils.arrayify(initialize_data)
+  //     ],
+  //   }
+  // );
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere

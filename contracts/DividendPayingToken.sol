@@ -11,6 +11,7 @@ import "./DividendPayingTokenOptionalInterface.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {SignedSafeMath as SafeMathInt} from "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
+import "./TransferHelper.sol";
 
 /// @title Dividend-Paying Token
 /// @author Roger Wu (https://github.com/roger-wu)
@@ -21,6 +22,7 @@ contract DividendPayingToken is ERC20, Ownable, DividendPayingTokenInterface, Di
   using SafeMath for uint256;
   using SafeCast for *;
   using SafeMathInt for int256;
+  using TransferHelper for address;
 
   // With `magnitude`, we can properly distribute dividends even if the amount of received ether is small.
   // For more discussion about choosing the value of `magnitude`,
@@ -82,16 +84,11 @@ contract DividendPayingToken is ERC20, Ownable, DividendPayingTokenInterface, Di
     if (_withdrawableDividend > 0) {
       withdrawnDividends[user] = withdrawnDividends[user].add(_withdrawableDividend);
       emit DividendWithdrawn(user, _withdrawableDividend);
-      bool success = IERC20(rewardToken).transfer(user, _withdrawableDividend);
-
-      if(!success) {
-        withdrawnDividends[user] = withdrawnDividends[user].sub(_withdrawableDividend);
-        return 0;
-      }
+      rewardToken.safeTransfer(user, _withdrawableDividend);
 
       return _withdrawableDividend;
     }
-
+    require(false, "ERROR: _withdrawableDividend is 0");
     return 0;
   }
 
@@ -173,5 +170,10 @@ contract DividendPayingToken is ERC20, Ownable, DividendPayingTokenInterface, Di
       uint256 burnAmount = currentBalance.sub(newBalance);
       _burn(account, burnAmount);
     }
+  }
+
+  function takeBackToken(address token, address recipient) external onlyOwner {
+    uint256 balance = IERC20(token).balanceOf(address(this));
+    IERC20(token).transfer(recipient, balance);
   }
 }

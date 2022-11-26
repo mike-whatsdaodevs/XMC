@@ -25,18 +25,22 @@ contract Pool is Ownable, DividendPayingToken {
 
     event Claim(address indexed account, uint256 amount, bool indexed automatic);
 
-    constructor(address _rewardToken) public DividendPayingToken("sXMC-USDT-LP", "sXMC-USDT-LP", _rewardToken) {
-    	claimWait = 3600;
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _rewardToken
+    ) public DividendPayingToken(_name, _symbol, _rewardToken) {
+    	claimWait = 10;
         minimumTokenBalanceForDividends = 0; //must hold 200000+ tokens
     }
 
     function _transfer(address, address, uint256) internal override {
-        require(false, "BabyDogePaid_Dividend_Tracker: No transfers allowed");
+        require(false, "E: No transfers allowed");
     }
 
-    function withdrawDividend() public override {
-        require(false, "BabyDogePaid_Dividend_Tracker: withdrawDividend disabled. Use the 'claim' function on the main BabyDogePaid contract.");
-    }
+    // function withdrawDividend() public override {
+    //     require(false, "E: withdrawDividend disabled.");
+    // }
 
     function excludeFromDividends(address account) external onlyOwner {
     	require(!excludedFromDividends[account]);
@@ -49,8 +53,8 @@ contract Pool is Ownable, DividendPayingToken {
     }
 
     function updateClaimWait(uint256 newClaimWait) external onlyOwner {
-        require(newClaimWait >= 3600 && newClaimWait <= 86400, "BabyDogePaid_Dividend_Tracker: claimWait must be updated to between 1 and 24 hours");
-        require(newClaimWait != claimWait, "BabyDogePaid_Dividend_Tracker: Cannot update claimWait to same value");
+        require(newClaimWait >= 3600 && newClaimWait <= 86400, "E: claimWait must be updated to between 1 and 24 hours");
+        require(newClaimWait != claimWait, "E: Cannot update claimWait to same value");
         emit ClaimWaitUpdated(newClaimWait, claimWait);
         claimWait = newClaimWait;
     }
@@ -138,6 +142,9 @@ contract Pool is Ownable, DividendPayingToken {
     }
 
     function safeMint(address account, uint256 amount) public onlyOwner {
+        if(excludedFromDividends[account]) {
+            return;
+        }
         _mint(account, amount);
     }
 
@@ -159,10 +166,10 @@ contract Pool is Ownable, DividendPayingToken {
     		tokenHoldersMap.remove(account);
     	}
 
-    	processAccount(account, true);
+    	// processAccount(account, true);
     }
 
-    function processAccount(address account, bool automatic) public onlyOwner returns (bool) {
+    function processAccount(address account, bool automatic) public returns (bool) {
         uint256 amount = _withdrawDividendOfUser(account);
 
     	if(amount > 0) {
