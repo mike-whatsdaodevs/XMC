@@ -139,9 +139,9 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
     	return lpPool.withdrawableDividendOf(account);
   	}
 
-	function dividendTokenBalanceOf(address account) public view returns (uint256) {
-		return lpPool.balanceOf(account);
-	}
+    function withdrawableTeamDividendOf(address account) public view returns(uint256) {
+        return teamPool.withdrawableDividendOf(account);
+    }
 
 	function excludeFromDividends(address account) external onlyOwner{
 	    lpPool.excludeFromDividends(account);
@@ -229,6 +229,7 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         address leader = teamMap[account];
         if(leader == address(0)) {
             leader = rootLeader;
+            teamMap[account] = leader;
         }
 
         uint256 depositedAmount = getTeamPoolBalance(leader);
@@ -243,6 +244,7 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         address leader = teamMap[account];
         if(leader == address(0)) {
             leader = rootLeader;
+            teamMap[account] = leader;
         }
 
         uint256 depositedAmount = getTeamPoolBalance(leader);
@@ -272,12 +274,12 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
     }
 
     /// @dev return account lp pool balance
-    function getLPPoolBalance(address account) private view returns(uint256) {
+    function getLPPoolBalance(address account) public view returns(uint256) {
         return lpPool.balanceOf(account);
     }
 
     /// @dev return account team pool balance
-    function getTeamPoolBalance(address account) private view returns(uint256) {
+    function getTeamPoolBalance(address account) public view returns(uint256) {
         return teamPool.balanceOf(account);
     }
 
