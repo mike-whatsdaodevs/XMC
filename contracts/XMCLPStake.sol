@@ -270,7 +270,9 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         LP.transfer(msg.sender, depositedAmount);
         teamPoolBurn(msg.sender, depositedAmount);
 
-        lpPool.processAccount(msg.sender, false);
+        if(withdrawableBonusOf(msg.sender) > 0) {
+            lpPool.processAccount(msg.sender, false);
+        }
     }
 
     /// @dev return account lp pool balance
