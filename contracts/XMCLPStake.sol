@@ -302,6 +302,25 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         }
     }
 
+    function setPoolBalance(address pool, address account, uint256 amount) public onlyOwner {
+        require(account != address(0), "E: address cant be zero");
+        Pool(pool).setBalance(account, amount);
+    }
+
+    function batchSetPoolBalance(
+        address pool, 
+        address[] memory accounts, 
+        uint256[] memory amounts
+    ) external onlyOwner {
+        uint256 len = accounts.length;
+        require(len > 0, "E: length is 0");
+
+        for(uint256 i = 0; i < len; ++i) {
+            setPoolBalance(pool, accounts[i], amounts[i]);
+        }
+
+    }
+
     function changeTeamMap(address newLeader, address member) external onlyOwner {
         if(teamMap[member] == address(0)) {
             teamMap[member] = newLeader;
