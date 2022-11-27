@@ -83,10 +83,10 @@ async function main() {
 
   // return;
 
-  // let claim_tx = await staking.teamClaim();
-  // await claim_tx.wait();
-  // console.log(claim_tx.hash);
-  // return;
+  let claim_tx = await staking.claim();
+  await claim_tx.wait();
+  console.log(claim_tx.hash);
+  return;
 
 
   let withdraw_tx = await staking.withdrawLP();

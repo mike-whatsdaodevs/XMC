@@ -49,6 +49,11 @@ module.exports = {
       url: process.env.GOERLIURL,
       accounts: 
         process.env.PRIVATE_KEY_8eb3 !== undefined ? [process.env.PRIVATE_KEY_8eb3] : [],
+    },
+    goerli_28bc: {
+      url: process.env.GOERLIURL,
+      accounts: 
+        process.env.PRIVATE_KEY_28bc !== undefined ? [process.env.PRIVATE_KEY_28bc] : [],
     }
   },
   mocha: {

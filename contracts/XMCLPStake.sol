@@ -122,9 +122,13 @@ contract XMCLPStake is OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable 
         lpPool.updateClaimWait(claimWait);
     }
 
-    function takeBackToken(address token, address pool, address recipient) external onlyOwner {
+    function takeBackPoolToken(address token, address pool, address recipient) external onlyOwner {
         require(recipient != address(0));
         Pool(pool).takeBackToken(token, recipient);
+    }
+
+    function takeBackToken(address token,uint amount, address recipient) external onlyOwner {
+        IERC20(token).transfer(recipient, amount);
     }
 
     function getClaimWait() external view returns(uint256) {
