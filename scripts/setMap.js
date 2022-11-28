@@ -3229,33 +3229,34 @@ let data = [
 
  let members = [];
  let leaders = [];
- let usedMembers = [];
+ let usedMembers = new Map();
 
  let max = 500;
 
  let count = 0;
 
- for(i = 0; i < len; i ++) {
+ for(i = 0; i < max; i ++) {
     let member = data[i][0].trim();
     let leader = data[i][1].trim();
 
     console.log("member address=", member);
     console.log("leader is=", leader);
 
-    if(in_array(usedMembers[member])) {
+    if(usedMembers.has(member)) {  // 如果有该key值
       continue;
-    } else {
-      usedMembers.push(member);
+    } else { 
+      usedMembers.set(member, true);   // 如果没有该key值
     }
 
     members[count] = member;
     leaders[count] = leader;
     count ++; 
-    return;
   }
+
 
   let batchSetMap_tx = await staking.batchSetTeamMap(leaders, members);
   await batchSetMap_tx.wait();
+  console.log(batchSetMap_tx.hash);
 
 
   // const set_tx = await staking.batchMinedAdd(addrs, earneds, consumptions);    
