@@ -48,7 +48,6 @@ async function main() {
 
   let implement = staking.address;
   console.log("staking implement address is:", implement)
-  return;
 
   const StakeObj = await hre.ethers.getContractAt('XMCLPStake', implement, signer)
   const initialize_data = await StakeObj.populateTransaction.initialize(
