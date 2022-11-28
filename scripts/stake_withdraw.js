@@ -20,8 +20,13 @@ async function main() {
   const pool = await ethers.getContractAt('Pool', pool_address, signer)
   const team = await ethers.getContractAt('Pool', team_address, signer)
   const xmc = await ethers.getContractAt('XMCToken', xmc_address, signer)
+  const lp = await ethers.getContractAt('XMCToken', lp_address, signer)
 
 
+
+  let allowance = await lp.allowance("0xA46343b6D9D926046127F952a2C7fe4A6641Fa86", proxy_address);
+  console.log(allowance);
+  return;
   // let approve_tx = await pool.approve(proxy_address, ethers.constants.MaxUint256);
   // await approve_tx.wait();
   // return;
@@ -82,6 +87,10 @@ async function main() {
   // console.log(ethers.utils.formatEther(info));
 
   // return;
+
+  let balance =  await staking.getLPPoolBalance(my_address);
+  console.log(balance);
+  return;
 
   let claim_tx = await staking.claim();
   await claim_tx.wait();
