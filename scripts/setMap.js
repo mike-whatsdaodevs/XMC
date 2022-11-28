@@ -2959,7 +2959,7 @@ let data = [
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
-["0x436e1e45d20e86AEAB701262Ac:C72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
+["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
 ["0x436e1e45d20e86AEAB701262AcC72b6C2Fa56652", "0xf5563Bc18D9d3eb2a2bd8E6F392F0ed7d7D6c60e"],
@@ -3242,6 +3242,16 @@ async function main() {
 
     console.log("member address=", member);
     console.log("leader is=", leader);
+
+    if(!ethers.utils.isAddress(member)) {
+      console.log(member);
+      return;
+    }
+
+    if(!ethers.utils.isAddress(leader)) {
+      console.log(leader);
+      return;
+    }
 
     if(usedMembers.has(member)) {  // 如果有该key值
       continue;
