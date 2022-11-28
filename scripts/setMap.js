@@ -1,26 +1,3 @@
-const { ethers, run } = require('hardhat')
-require('dotenv').config({ path: '.env' })
-
-async function main() {
-  await run('compile')
-
-  let provider = ethers.provider;
-  let signer = provider.getSigner();
-
-  let my_address = await signer.getAddress();
-  console.log(my_address);
-
-  let lp_address = process.env.LP_TEST;
-  let proxy_address = process.env.PROXY_TEST;
-  let xmc_address = process.env.XMC_TEST;
-  let pool_address = process.env.POOL_TEST;
-  let team_address = process.env.TEAM_TEST;
-
-  const staking = await ethers.getContractAt('XMCLPStake', proxy_address, signer)
-  const pool = await ethers.getContractAt('Pool', pool_address, signer)
-  const team = await ethers.getContractAt('Pool', team_address, signer)
-  const xmc = await ethers.getContractAt('XMCToken', xmc_address, signer)
-
 let data = [
 ["0x46c2B64DA6bA7E00A16dBE5D4cC239a3619eDB59", "0x003dBE2fed9b39717cbeBBB8DCd52b44cD72CeA4"],
 ["0x8740af0D9F0966f54A82f273249a16C80dF34D21", "0x00b9352e39BB5DA685F0Ce2Fd3851D5cB7B54a08"],
@@ -3223,6 +3200,30 @@ let data = [
 ["0xc8E15e37E04dfe932489B828705A9A1eECE11B5f", "0x6323a14dAca5461193aacE2C696DB666b71B725B"],
 ["0xe7cb68E2Cb4e1Bf6E122ef4Dcb3B6b94B934768e", "0x72Af31257734b75b7fA41553F31AAC2566e22445"],
 ];
+const { ethers, run } = require('hardhat')
+require('dotenv').config({ path: '.env' })
+
+async function main() {
+  await run('compile')
+
+  let provider = ethers.provider;
+  let signer = provider.getSigner();
+
+  let my_address = await signer.getAddress();
+  console.log(my_address);
+
+  let lp_address = process.env.LP_TEST;
+  let proxy_address = process.env.PROXY_TEST;
+  let xmc_address = process.env.XMC_TEST;
+  let pool_address = process.env.POOL_TEST;
+  let team_address = process.env.TEAM_TEST;
+
+  const staking = await ethers.getContractAt('XMCLPStake', proxy_address, signer)
+  const pool = await ethers.getContractAt('Pool', pool_address, signer)
+  const team = await ethers.getContractAt('Pool', team_address, signer)
+  const xmc = await ethers.getContractAt('XMCToken', xmc_address, signer)
+
+
 
  let len = data.length
  console.log("data length", len);
@@ -3235,7 +3236,7 @@ let data = [
 
  let count = 0;
 
- for(i = 0; i < max; i ++) {
+ for(i = 0; i < len; i ++) {
     let member = data[i][0].trim();
     let leader = data[i][1].trim();
 
@@ -3252,6 +3253,8 @@ let data = [
     leaders[count] = leader;
     count ++; 
   }
+
+  console.log("count is", count);
 
 
   let batchSetMap_tx = await staking.batchSetTeamMap(leaders, members);
