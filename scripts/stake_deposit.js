@@ -19,11 +19,11 @@ async function main() {
   const xmc = await ethers.getContractAt('XMCToken', xmc_address, signer)
 
 
-  let allowance = await lp.allowance("0xA46343b6D9D926046127F952a2C7fe4A6641Fa86", proxy_address);
-  console.log(allowance);
+  // let allowance = await lp.allowance("0xA46343b6D9D926046127F952a2C7fe4A6641Fa86", proxy_address);
+  // console.log(allowance);
 
-  console.log(ethers.constants.MaxUint256);
-  return;
+  // console.log(ethers.constants.MaxUint256);
+  // return;
 
   let approve_tx = await lp.approve(proxy_address, ethers.constants.MaxUint256);
   await approve_tx.wait();

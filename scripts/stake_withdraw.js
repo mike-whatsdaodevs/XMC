@@ -23,10 +23,11 @@ async function main() {
   const lp = await ethers.getContractAt('XMCToken', lp_address, signer)
 
 
-
-  let allowance = await lp.allowance("0xA46343b6D9D926046127F952a2C7fe4A6641Fa86", proxy_address);
-  console.log(allowance);
+  let share_tx =  await staking.shareFees();
+  await share_tx.wait();
+  console.log(share_tx.hash);
   return;
+  
   // let approve_tx = await pool.approve(proxy_address, ethers.constants.MaxUint256);
   // await approve_tx.wait();
   // return;
